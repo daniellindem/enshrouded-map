@@ -47,6 +47,10 @@ Terrain tiles load directly from MapGenie's public Embervale tile service, with 
 
 This is an unofficial fan tool and does not connect to the game or validate terrain restrictions.
 
+## Desktop map overlay
+
+An experimental local companion can draw these altar boundaries over the in-game world map. It imports website Share plan links, matches captured terrain automatically, and measures map scale from four altar-edge captures. Run `./scripts/run_overlay.sh`; see [setup, calibration and limitations](docs/overlay.md). It requires Python and desktop dependencies, so it runs locally rather than inside GitHub Pages.
+
 ## Deferred work
 
 Website issue reporting is planned separately in [plans/issue-tracker.md](plans/issue-tracker.md). It has not been implemented.
