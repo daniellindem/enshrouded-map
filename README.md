@@ -12,7 +12,10 @@ Then visit http://localhost:5173. No install or build is required.
 
 ## GitHub Pages
 
-The site publishes from `main` with the `Publish GitHub Pages` workflow. In the repository's Pages settings, the publishing source is **GitHub Actions**. The repository stays private; the published website is public so anyone with its URL can try it.
+The site publishes from `main` with the `Publish GitHub Pages` workflow. In the repository's Pages settings, the publishing source is **GitHub Actions**. The repository and website are public so anyone can try it on the current GitHub plan.
+
+- Website: https://daniellindem.github.io/enshrouded-map/
+- Repository: https://github.com/daniellindem/enshrouded-map
 
 The workflow packages an explicit list of website assets. Repository documentation, plans, and workflow files are not included in the published site. To produce the same package locally:
 
@@ -20,7 +23,7 @@ The workflow packages an explicit list of website assets. Repository documentati
 python3 scripts/build_site.py
 ```
 
-The output is `_site/`, including a freshly generated portable HTML file. The build uses Python's standard library only. Private-repository Pages hosting requires a supported GitHub plan.
+The output is `_site/`, including a freshly generated portable HTML file. The build uses Python's standard library only. Moving the repository back to private would require a supported paid GitHub plan to keep publishing with Pages.
 
 Place and drag flame altars, choose each altar's level, compare the four building footprints, and toggle landmarks or a 10-metre building grid. Plans save locally in the browser. Share plan copies a URL containing the plan, including its scale. Undo restores altar edits, removal, and calibration changes. Touch supports map panning and pinch zoom.
 
