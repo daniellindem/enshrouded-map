@@ -29,7 +29,9 @@ Place and drag flame altars, choose each altar's level, compare the four buildin
 
 ## Map scale
 
-The default scale is **approximate**: 0.5 metres per imagery pixel at source zoom 16. It is not a verified game coordinate conversion. Use the ruler control, mark two points with a known horizontal in-game distance, and enter that distance to calibrate all overlays. Calibration is saved with the plan. Do not use the default estimate for precise placement.
+The default is a **measured estimate** of 0.356 metres per imagery pixel at source zoom 16. It comes from four boundary measurements at a level 1 altar northeast of Low Meadows Ancient Spire, matched to the site's terrain imagery. See [the calibration record](docs/map-calibration.md) for the measurements and limits. Use the ruler tool for local calibration when precise placement matters.
+
+Older saved and shared plans using the original uncalibrated 0.5 estimate update automatically. Altar locations and levels stay the same. Manually calibrated scales are preserved, including a manual calibration of exactly 0.5. Plans save the scale revision alongside their other settings.
 
 Building footprints are 40, 80, 120, and 160 metres per side for altar levels 1 through 4. These are full side lengths, not radii. The map shows the horizontal footprint of the cubic building volume. Global Flame strength is a separate progression system. Dimensions: [Official Enshrouded Wiki](https://enshrouded.wiki.gg/wiki/Flame_Altar).
 

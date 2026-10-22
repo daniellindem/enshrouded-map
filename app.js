@@ -11,14 +11,18 @@
   const WORLD_SIZE = 2 ** 16 * 256;
   const ORIGIN = 32512 * 256;
   const MAP_SIZE = 65536;
-  const DEFAULT_MPP = .5; // Approximation, explicitly labelled until the user calibrates.
+  // Four-direction level-1 altar measurement matched to V7 source tiles.
+  // See docs/map-calibration.md. Still an estimate, with manual calibration available.
+  const DEFAULT_MPP = .356;
+  const SCALE_REVISION = 2;
   const MIN_ZOOM = 9, MAX_ZOOM = 18;
   const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
   const project = (lat, lng) => ({x:(lng + 180) / 360 * WORLD_SIZE - ORIGIN, y:(1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * WORLD_SIZE - ORIGIN});
   const locations = (window.EMBERVALE_LOCATIONS || []).map(([name, lat, lng, type]) => ({name, type, ...project(lat,lng)}));
   const kelvin = project(.59582999150221,-.79203182243009);
-  const defaultState = () => ({version:1,altars:[{id:'first-flame',name:'Fort Kelvin base',x:kelvin.x,y:kelvin.y,level:3,visible:true}],selected:'first-flame',center:{...kelvin},zoom:14.7,metersPerPixel:DEFAULT_MPP,calibrated:false,compare:true,boundaries:true,landmarks:true,grid:false});
+  const defaultState = () => ({version:1,altars:[{id:'first-flame',name:'Fort Kelvin base',x:kelvin.x,y:kelvin.y,level:3,visible:true}],selected:'first-flame',center:{...kelvin},zoom:14.7,metersPerPixel:DEFAULT_MPP,scaleRevision:SCALE_REVISION,calibrated:false,compare:true,boundaries:true,landmarks:true,grid:false});
   const validNumber = value => typeof value === 'number' && Number.isFinite(value);
+  const needsScaleUpdate = data => data.calibrated!==true && (data.scaleRevision??1)<SCALE_REVISION && data.metersPerPixel===.5;
   function validate(data) {
     if(!data || data.version !== 1 || !Array.isArray(data.altars) || data.altars.length > 100) throw Error('Invalid plan');
     const ids = new Set();
@@ -28,7 +32,8 @@
       return {id:a.id,name:a.name.slice(0,60) || 'Unnamed altar',x:a.x,y:a.y,level:a.level,visible:a.visible !== false};
     });
     const base = defaultState();
-    return {...base,altars,selected:altars.some(a=>a.id===data.selected)?data.selected:altars[0]?.id||null,center: data.center && validNumber(data.center.x) && validNumber(data.center.y) ? {x:clamp(data.center.x,0,MAP_SIZE),y:clamp(data.center.y,0,MAP_SIZE)} : {...kelvin},zoom:validNumber(data.zoom)?clamp(data.zoom,MIN_ZOOM,MAX_ZOOM):base.zoom,metersPerPixel:validNumber(data.metersPerPixel)&&data.metersPerPixel>=.0001&&data.metersPerPixel<=1000?data.metersPerPixel:DEFAULT_MPP,calibrated:data.calibrated===true,compare:data.compare!==false,boundaries:data.boundaries!==false,landmarks:data.landmarks!==false,grid:data.grid===true};
+    const metersPerPixel=needsScaleUpdate(data)?DEFAULT_MPP:validNumber(data.metersPerPixel)&&data.metersPerPixel>=.0001&&data.metersPerPixel<=1000?data.metersPerPixel:DEFAULT_MPP;
+    return {...base,altars,selected:altars.some(a=>a.id===data.selected)?data.selected:altars[0]?.id||null,center: data.center && validNumber(data.center.x) && validNumber(data.center.y) ? {x:clamp(data.center.x,0,MAP_SIZE),y:clamp(data.center.y,0,MAP_SIZE)} : {...kelvin},zoom:validNumber(data.zoom)?clamp(data.zoom,MIN_ZOOM,MAX_ZOOM):base.zoom,metersPerPixel,scaleRevision:SCALE_REVISION,calibrated:data.calibrated===true,compare:data.compare!==false,boundaries:data.boundaries!==false,landmarks:data.landmarks!==false,grid:data.grid===true};
   }
   let state=defaultState(), startMessage='';
   let imported=false;
@@ -37,11 +42,12 @@
       const encoded=location.hash.slice(6);
       if(encoded.length>50000) throw Error('Plan too large');
       const bytes=Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
-      state=validate(JSON.parse(new TextDecoder().decode(bytes))); imported=true;
-      startMessage='Shared plan opened. Saved on this device.';
+      const data=JSON.parse(new TextDecoder().decode(bytes));
+      state=validate(data); imported=true;
+      startMessage=needsScaleUpdate(data)?'Shared plan opened with the updated measured estimate.':'Shared plan opened. Saved on this device.';
     } catch {startMessage='This plan link is invalid. Your saved plan is still available.';}
   }
-  if(!imported) {try { const stored=localStorage.getItem(STORAGE_KEY); if(stored) state=validate(JSON.parse(stored)); }catch {startMessage='Saved plan could not be read. Starting a new plan.';}}
+  if(!imported) {try { const stored=localStorage.getItem(STORAGE_KEY); if(stored) {const data=JSON.parse(stored);state=validate(data);if(needsScaleUpdate(data))startMessage='Building boundaries updated using the measured map scale.';} }catch {startMessage='Saved plan could not be read. Starting a new plan.';}}
   const history=[];
   let width=0,height=0,frame=0,mode=null,calibrationPoints=[],gesture=null,toastTimer,saveTimer,loadedTiles=0,searchItems=[];
   const pointers=new Map(), tileCache=new Map();
@@ -76,7 +82,7 @@
     }
     for(const key of ['compare','boundaries','landmarks','grid'])$(key).checked=state[key];
     $('compare-legend').hidden=!state.compare;
-    $('scale-status').innerHTML=`${state.calibrated?'Calibrated':'Approximate'} scale ${icon('ruler')}`;
+    $('scale-status').innerHTML=`${state.calibrated?'Calibrated scale':'Measured estimate'} ${icon('ruler')}`;
     $('locate').disabled=!a;
     $('undo').disabled=!history.length;
   }
@@ -242,7 +248,7 @@
     if(mpp<.0001||mpp>1000){toast('That distance gives an unsupported scale. Choose points farther apart.');return;}
     commit(()=>{state.metersPerPixel=mpp;state.calibrated=true;},'Map scale calibrated. All altar boundaries have been updated.');$('calibration-dialog').close();setMode(null);
   };
-  $('reset-scale').onclick=()=>{commit(()=>{state.metersPerPixel=DEFAULT_MPP;state.calibrated=false;},'Approximate map scale restored.');$('calibration-dialog').close();setMode(null);};
+  $('reset-scale').onclick=()=>{commit(()=>{state.metersPerPixel=DEFAULT_MPP;state.scaleRevision=SCALE_REVISION;state.calibrated=false;},'Measured default estimate restored.');$('calibration-dialog').close();setMode(null);};
   $('calibration-dialog').addEventListener('close',()=>{if(mode==='calibrate')setMode(null);});
   $('retry-tiles').onclick=()=>{for(const [key,entry] of tileCache)if(entry.status==='error'){entry.img.remove();tileCache.delete(key);}draw();};
   $('dismiss-instruction').onclick=()=>{$('map-instruction').hidden=true;};
